@@ -1,54 +1,8 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-#
-
-# Basic Airflow cluster configuration for CeleryExecutor with Redis and PostgreSQL.
-#
-# WARNING: This configuration is for local development. Do not use it in a production deployment.
-#
-# This configuration supports basic configuration using environment variables or an .env file
-# The following variables are supported:
-#
-# AIRFLOW_IMAGE_NAME           - Docker image name used to run Airflow.
-#                                Default: apache/airflow:3.0.2
-# AIRFLOW_UID                  - User ID in Airflow containers
-#                                Default: 50000
-# AIRFLOW_PROJ_DIR             - Base path to which all the files will be volumed.
-#                                Default: .
-# Those configurations are useful mostly in case of standalone testing/running Airflow in test/try-out mode
-#
-# _AIRFLOW_WWW_USER_USERNAME   - Username for the administrator account (if requested).
-#                                Default: airflow
-# _AIRFLOW_WWW_USER_PASSWORD   - Password for the administrator account (if requested).
-#                                Default: airflow
-# _PIP_ADDITIONAL_REQUIREMENTS - Additional PIP requirements to add when starting all containers.
-#                                Use this option ONLY for quick checks. Installing requirements at container
-#                                startup is done EVERY TIME the service is started.
-#                                A better way is to build a custom image or extend the official image
-#                                as described in https://airflow.apache.org/docs/docker-stack/build.html.
-#                                Default: ''
-#
-# Feel free to modify this file to suit your needs.
 ---
 x-airflow-common: &airflow-common
-  # In order to add custom dependencies or upgrade provider distributions you can use your extended image.
-  # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
-  # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  build: .
+  build: ./airflow
+  env_file:
+    - example.env
   environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
@@ -59,74 +13,88 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
-    # yamllint disable rule:line-length
-    # Use simple http server on scheduler for health checks
-    # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
-    # yamllint enable rule:line-length
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-    # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
-    # for other purpose (development, test and especially production usage) build/extend Airflow image.
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
-    # The following line can be used to set a custom config file, stored in the local config folder
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    AWS_ACCESS_KEY_ID: 'minioadmin'
+    AWS_SECRET_ACCESS_KEY: 'minioadmin'
+    AWS_REGION: 'us-east-1'
+    AWS_DEFAULT_REGION: 'us-east-1'
+    AWS_S3_ENDPOINT: 'http://minio:9000'
+    WAREHOUSE: 's3://warehouse/'
+    NESSIE_URI: 'http://nessie:19120/api/v2'
+    MINIO_REGION: 'us-east-1'
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
-    - ${AIRFLOW_PROJ_DIR:-.}/project_config:/opt/airflow/project_config
+    - ${AIRFLOW_PROJ_DIR:-.}/dags/spark-jobs:/opt/airflow/dags/spark-jobs
+    - ${AIRFLOW_PROJ_DIR:-.}/dags/data:/opt/airflow/dags/data
+    - ${AIRFLOW_PROJ_DIR:-.}/dags/utils:/opt/airflow/dags/utils
   user: '${AIRFLOW_UID:-50000}:0'
   depends_on: &airflow-common-depends-on
     redis:
       condition: service_healthy
     postgres:
       condition: service_healthy
+  networks:
+    - data-lake-network
 
 services:
-  postgres_dwh:
-    image: postgres:13
-    container_name: postgres_dwh
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: warehouse
-    volumes:
-      - ./postgres_data:/var/lib/postgresql/data
-    restart: always
+  nessie:
+    image: projectnessie/nessie:latest
+    networks:
+      data-lake-network:
     ports:
-      - '5432:5432'
+      - 19120:19120
 
   minio:
     image: minio/minio:RELEASE.2025-02-18T16-25-55Z
-    restart: always
+    container_name: minio
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    volumes:
-      - ./data:/data
-    command: server /data --console-address ":9001"
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+      - MINIO_DOMAIN=minio
+      - MINIO_REGION_NAME=us-east-1
+      - MINIO_REGION=us-east-1
+    networks:
+      data-lake-network:
     ports:
-      - '9000:9000'
-      - '9001:9001'
+      - 9001:9001
+      - 9000:9000
+    command: ['server', '/data', '--console-address', ':9001']
 
-  metabase:
-    image: metabase/metabase:latest
-    ports:
-      - '3000:3000'
-    environment:
-      MB_DB_TYPE: postgres
-      MB_DB_HOST: postgres_dwh
-      MB_DB_PORT: 5432
-      MB_DB_USER: postgres
-      MB_DB_PASS: postgres
-      MB_DB_DBNAME: warehouse
+  minio-client:
     depends_on:
-      - postgres_dwh
-    volumes:
-      - metabase_data:/opt/airflow/metabase-data
+      - minio
+      - nessie
+    image: minio/mc
+    container_name: mc
+    networks:
+      data-lake-network:
+        aliases:
+          - minio.client
+    environment:
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc alias set minio http://minio:9000 minioadmin minioadmin) do echo '...waiting...' && sleep 1; done;
+      /usr/bin/mc mb --ignore-existing minio/warehouse;
+      /usr/bin/mc anonymous set download minio/warehouse;
+      tail -f /dev/null
+      "
 
   postgres:
-    image: postgres:13
+    image: postgres:16
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -139,10 +107,10 @@ services:
       retries: 5
       start_period: 5s
     restart: always
+    networks:
+      - data-lake-network
 
   redis:
-    # Redis is limited to 7.2-bookworm due to licencing change
-    # https://redis.io/blog/redis-adopts-dual-source-available-licensing/
     image: redis:7.2-bookworm
     expose:
       - 6379
@@ -153,12 +121,111 @@ services:
       retries: 50
       start_period: 30s
     restart: always
+    networks:
+      - data-lake-network
+
+  spark-master:
+    build: ./spark
+    container_name: spark-master
+    hostname: spark-master
+    ports:
+      - 7077:7077
+      - 8088:8088
+    networks:
+      - data-lake-network
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8088
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_REGION=us-east-1
+      - AWS_S3_ENDPOINT=http://minio:9000
+      - WAREHOUSE=s3://warehouse/
+      - NESSIE_URI=http://nessie:19120/api/v2
+      - MINIO_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+      - PYSPARK_PYTHON=/opt/conda/envs/py312/bin/python
+    depends_on:
+      - nessie
+    entrypoint: >
+      sh -c "
+        sleep 15 &&
+        /opt/spark/sbin/start-master.sh &&
+        tail -f /opt/spark/logs/spark-*-org.apache.spark.deploy.master.Master-*.out
+      "
+
+  spark-worker:
+    build: ./spark
+    container_name: spark-worker
+    hostname: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2G
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_S3_ENDPOINT=http://minio:9000
+      - WAREHOUSE=s3://warehouse/
+      - NESSIE_URI=http://nessie:19120/api/v2
+      - MINIO_REGION=us-east-1
+      - PYSPARK_PYTHON=/opt/conda/envs/py312/bin/python
+    ports:
+      - '8081:8081'
+    depends_on:
+      - spark-master
+    networks:
+      - data-lake-network
+    entrypoint: >
+      sh -c "
+        sleep 20 &&
+        /opt/spark/sbin/start-worker.sh spark://spark-master:7077 &&
+        tail -f /opt/spark/logs/spark-*-org.apache.spark.deploy.worker.Worker-*.out
+      "
+
+  trino-coordinator:
+    image: trinodb/trino:476
+    container_name: trino-coordinator
+    ports:
+      - '8080:8080'
+    volumes:
+      - ./trino_config/coordinator/config.properties:/etc/trino/config.properties
+      - ./trino_config/catalog:/etc/trino/catalog
+      - ./trino_config/coordinator/init.sql:/etc/trino/init.sql
+    networks:
+      - data-lake-network
+
+  trino-worker-1:
+    image: trinodb/trino:476
+    container_name: trino-worker-1
+    volumes:
+      - ./trino_config/worker/config.properties:/etc/trino/config.properties
+      - ./trino_config/catalog:/etc/trino/catalog
+    depends_on:
+      - trino-coordinator
+    networks:
+      - data-lake-network
+
+  trino-worker-2:
+    image: trinodb/trino:476
+    container_name: trino-worker-2
+    volumes:
+      - ./trino_config/worker/config.properties:/etc/trino/config.properties
+      - ./trino_config/catalog:/etc/trino/catalog
+    depends_on:
+      - trino-coordinator
+    networks:
+      - data-lake-network
 
   airflow-apiserver:
     <<: *airflow-common
     command: api-server
     ports:
-      - '8080:8080'
+      - '8085:8080'
     healthcheck:
       test: ['CMD', 'curl', '--fail', 'http://localhost:8080/api/v2/version']
       interval: 30s
@@ -209,7 +276,6 @@ services:
     <<: *airflow-common
     command: celery worker
     healthcheck:
-      # yamllint disable rule:line-length
       test:
         - 'CMD-SHELL'
         - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
@@ -219,8 +285,6 @@ services:
       start_period: 30s
     environment:
       <<: *airflow-common-env
-      # Required to handle warm shutdown of the celery workers properly
-      # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: '0'
     restart: always
     depends_on:
@@ -252,7 +316,6 @@ services:
   airflow-init:
     <<: *airflow-common
     entrypoint: /bin/bash
-    # yamllint disable rule:line-length
     command:
       - -c
       - |
@@ -264,7 +327,7 @@ services:
           echo "For other operating systems you can get rid of the warning with manually created .env file:"
           echo "    See: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#setting-the-right-airflow-user"
           echo
-          export AIRFLOW_UID=$(id -u)
+          export AIRFLOW_UID=$$(id -u)
         fi
         one_meg=1048576
         mem_available=$$(($$(getconf _PHYS_PAGES) * $$(getconf PAGE_SIZE) / one_meg))
@@ -331,7 +394,6 @@ services:
         echo
         ls -la /opt/airflow/{logs,dags,plugins,config}
 
-    # yamllint enable rule:line-length
     environment:
       <<: *airflow-common-env
       _AIRFLOW_DB_MIGRATE: 'true'
@@ -348,7 +410,6 @@ services:
     environment:
       <<: *airflow-common-env
       CONNECTION_CHECK_MAX_COUNT: '0'
-    # Workaround for entrypoint issue. See: https://github.com/apache/airflow/issues/16252
     command:
       - bash
       - -c
@@ -356,29 +417,8 @@ services:
     depends_on:
       <<: *airflow-common-depends-on
 
-  # You can enable flower by adding "--profile flower" option e.g. docker-compose --profile flower up
-  # or by explicitly targeted on the command line e.g. docker-compose up flower.
-  # See: https://docs.docker.com/compose/profiles/
-  flower:
-    <<: *airflow-common
-    command: celery flower
-    profiles:
-      - flower
-    ports:
-      - '5555:5555'
-    healthcheck:
-      test: ['CMD', 'curl', '--fail', 'http://localhost:5555/']
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: always
-    depends_on:
-      <<: *airflow-common-depends-on
-      airflow-init:
-        condition: service_completed_successfully
-
 volumes:
   postgres-db-volume:
-  postgres_data:
-  metabase_data:
+
+networks:
+  data-lake-network:
