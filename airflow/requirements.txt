@@ -1,0 +1,10 @@
+requests==2.32.5
+dotenv==0.9.9
+python-dotenv==1.2.1
+minio==7.2.18
+apache-airflow-providers-postgres==6.4.0
+apache-airflow-providers-apache-spark>=5.3.2
+yfinance==0.2.66
+pyspark==3.5.2
+dbt-trino==1.9.3
+dbt-core==1.10.15
