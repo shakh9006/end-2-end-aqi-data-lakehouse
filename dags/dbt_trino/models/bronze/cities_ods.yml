@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: cities_ods
+    description: Cities ODS
+    columns:
+      - name: city
+        description: City
+        tests:
+          - not_null
+      - name: country
+        description: Country
+        tests:
+          - not_null
+      - name: population
+        description: Population
+        tests:
+          - not_null
+      - name: slug
+        description: Slug
+        tests:
+          - not_null

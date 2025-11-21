@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: aqi_daily_ods
+    description: AQI Daily ODS
+    columns:
+      - name: aqi
+        description: AQI
+        tests:
+          - not_null
+      - name: co
+        description: CO
+        tests:
+          - not_null
+      - name: no2
+        description: NO2
+        tests:
+          - not_null
+      - name: o3
+        description: O3
+        tests:
+          - not_null
+      - name: pm10
+        description: PM10
+        tests:
+          - not_null
+      - name: pm25
+        description: PM2.5
+        tests:
+          - not_null
+      - name: so2
+        description: SO2
+        tests:
+          - not_null
+      - name: slug
+        description: Slug
+        tests:
+          - not_null
+      - name: aqi_date
+        description: AQI Date
+        tests:
+          - not_null

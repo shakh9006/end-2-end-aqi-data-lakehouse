@@ -2,7 +2,7 @@
 x-airflow-common: &airflow-common
   build: ./airflow
   env_file:
-    - example.env
+    - .env
   environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
@@ -149,6 +149,8 @@ services:
       - PYSPARK_PYTHON=/opt/conda/envs/py312/bin/python
     depends_on:
       - nessie
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}/dags/data:/opt/airflow/dags/data
     entrypoint: >
       sh -c "
         sleep 15 &&
@@ -163,8 +165,8 @@ services:
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=2
-      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=4
+      - SPARK_WORKER_MEMORY=8G
       - AWS_ACCESS_KEY_ID=minioadmin
       - AWS_SECRET_ACCESS_KEY=minioadmin
       - AWS_REGION=us-east-1
@@ -180,6 +182,8 @@ services:
       - spark-master
     networks:
       - data-lake-network
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}/dags/data:/opt/airflow/dags/data
     entrypoint: >
       sh -c "
         sleep 20 &&

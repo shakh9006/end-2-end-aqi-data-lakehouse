@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: Bronze Layer
+    loader: Manual
+    database: nessie
+    schema: bronze
+    tables:
+      - name: aqi_daily
+      - name: cities

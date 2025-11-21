@@ -1,0 +1,10 @@
+version: 2
+
+models:
+  - name: fact_orders
+    description: Orders Fact Table
+    columns:
+      - name: aqi_id
+        description: AQI ID
+        tests:
+          - not_null
