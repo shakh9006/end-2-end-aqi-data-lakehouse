@@ -2,7 +2,7 @@
     config(
         materialized='table',
         schema='bronze',
-        database='nessie',
+        database='iceberg',
         tags=['bronze'],
     )
 }}

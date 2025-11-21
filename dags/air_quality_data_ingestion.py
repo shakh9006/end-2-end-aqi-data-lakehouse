@@ -1,6 +1,7 @@
 import logging
 from airflow.sdk import dag
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 
 @dag(
     dag_id="air_quality_data_ingestion",
@@ -27,6 +28,11 @@ def air_quality_data_ingestion():
         conf={},
     )
 
-    ingest_raw_data_task
+    trigger_clean_raw_data_task = TriggerDagRunOperator(
+        task_id="trigger_clean_raw_data_task",
+        trigger_dag_id="clean_raw_data",
+    )
+
+    ingest_raw_data_task >> trigger_clean_raw_data_task
 
 air_quality_data_ingestion()

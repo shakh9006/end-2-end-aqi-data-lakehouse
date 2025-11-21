@@ -32,11 +32,14 @@ models:
     bronze:
       +tags: bronze
       +schema: bronze
+      +materialized: table
 
     silver:
       +tags: silver
       +schema: silver
+      +materialized: table
 
     gold:
       +tags: gold
       +schema: gold
+      +materialized: table

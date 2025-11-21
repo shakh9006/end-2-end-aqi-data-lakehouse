@@ -36,4 +36,6 @@ def city_check():
         trigger_dag_id="air_quality_data_ingestion",
     )
 
+    create_or_skip_cities_task >> ingest_air_quality_data_task
+
 city_check()
