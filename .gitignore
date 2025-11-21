@@ -211,3 +211,5 @@ data/
 logs/
 postgres_data/
 metabase_data/
+
+test.py

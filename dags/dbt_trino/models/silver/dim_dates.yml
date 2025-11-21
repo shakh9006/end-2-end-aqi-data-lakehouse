@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: dim_dates
+    description: Dates Dimension
+    columns:
+      - name: date_id
+        description: Date ID
+        tests:
+          - not_null
+      - name: date_value
+        description: Date Value
+        tests:
+          - not_null
+      - name: year
+        description: Year
+        tests:
+          - not_null
+      - name: quarter
+        description: Quarter
+        tests:
+          - not_null

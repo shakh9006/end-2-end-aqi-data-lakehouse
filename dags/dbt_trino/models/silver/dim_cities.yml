@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: dim_cities
+    description: Cities Dimension
+    columns:
+      - name: city_id
+        description: City ID
+        tests:
+          - not_null
+      - name: city_name
+        description: City Name
+        tests:
+          - not_null
+      - name: country
+        description: Country
+        tests:
+          - not_null
+      - name: city_population
+        description: City Population
+        tests:
+          - not_null
+      - name: city_slug
+        description: City Slug
+        tests:
+          - not_null

@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: silver
+    description: Silver Layer
+    loader: Manual
+    database: nessie
+    schema: silver
+    tables:
+      - name: dim_cities
+      - name: dim_dates
+      - name: fact_aqi_daily
