@@ -31,15 +31,10 @@ A compact and modern end-to-end data lakehouse for Air Quality Index (AQI).
 
 - Architecture diagram: images/architecture.png
 
+![Metabase result](docs/diagram.png)
+
 ---
 
-- Metabase result: images/metabase_result.png
+#### Metabase result
 
-```
-docs/result.png
-```
-
-```
-images/architecture.png
-images/metabase_result.png
-```
+![Metabase result](docs/result.png)
