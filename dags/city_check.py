@@ -33,7 +33,7 @@ def city_check():
 
     ingest_air_quality_data_task = TriggerDagRunOperator(
         task_id="ingest_air_quality_data_task",
-        trigger_dag_id="clean_raw_data",
+        trigger_dag_id="air_quality_data_ingestion",
     )
 
     create_or_skip_cities_task >> ingest_air_quality_data_task
