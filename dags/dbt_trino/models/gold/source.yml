@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: gold
+    description: Gold Layer
+    loader: Manual
+    database: iceberg
+    schema: gold
+    tables:
+      - name: best_aqi_by_city
+      - name: worst_aqi_by_city
