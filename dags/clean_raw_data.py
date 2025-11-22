@@ -2,6 +2,7 @@ import logging
 
 from airflow.sdk import dag
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 
 @dag(
     dag_id="clean_raw_data",
@@ -22,3 +23,12 @@ def clean_raw_data():
         executor_memory="2g",
         verbose=True,
     )
+
+    trigger_dbt_task = TriggerDagRunOperator(
+        task_id="trigger_dbt_task",
+        trigger_dag_id="dbt_trino",
+    )
+
+    clean_raw_data_task >> trigger_dbt_task
+
+clean_raw_data()

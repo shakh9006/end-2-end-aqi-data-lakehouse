@@ -11,21 +11,6 @@ logger = logging.getLogger(__name__)
 
 INPUT_FILE = "dags/data/cities.csv"
 
-# def city_available(city_name):
-#     try:
-#         slug = city_to_slug(city_name)
-#         url = f"https://api.waqi.info/feed/{slug}/?token={AQI_API_KEY}"
-#         response = requests.get(url)
-#         result = response.json()
-
-#         if response.status_code == 200 and result.get("status") == "ok":
-#             return True
-#         else:
-#             return False
-#     except Exception as e:
-#         return False
-
-
 spark = (
     SparkSession.builder
     .appName("Create or Skip City")

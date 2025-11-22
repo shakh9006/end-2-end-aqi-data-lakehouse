@@ -8,7 +8,7 @@ from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOpe
 @dag(
     dag_id="city_check",
     start_date=datetime(2025, 11, 18),
-    schedule='*/15 * * * *',
+    schedule='*/30 * * * *',
     catchup=False,
     description='Check the city air quality',
     tags=['city_check'],
@@ -33,7 +33,9 @@ def city_check():
 
     ingest_air_quality_data_task = TriggerDagRunOperator(
         task_id="ingest_air_quality_data_task",
-        trigger_dag_id="air_quality_data_ingestion",
+        trigger_dag_id="clean_raw_data",
     )
+
+    create_or_skip_cities_task >> ingest_air_quality_data_task
 
 city_check()

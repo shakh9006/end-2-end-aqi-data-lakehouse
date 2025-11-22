@@ -4,7 +4,7 @@ sources:
   - name: silver
     description: Silver Layer
     loader: Manual
-    database: nessie
+    database: iceberg
     schema: silver
     tables:
       - name: dim_cities

@@ -4,7 +4,7 @@ dbt_trino:
       type: trino
       method: none
       user: dbt
-      database: nessie
+      database: iceberg
       host: trino-coordinator
       port: 8080
       schema: silver

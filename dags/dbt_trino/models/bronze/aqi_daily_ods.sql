@@ -2,7 +2,7 @@
     config(
         materialized='table',
         schema='bronze',
-        database='nessie',
+        database='iceberg',
         tags=['bronze'],
     )
 }}
@@ -16,5 +16,5 @@ select
     pm25,
     so2,
     slug,
-    timestamp as aqi_date,
+    timestamp as aqi_date
 from {{ source('bronze', 'aqi_daily') }}

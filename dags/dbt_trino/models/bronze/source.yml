@@ -4,7 +4,7 @@ sources:
   - name: bronze
     description: Bronze Layer
     loader: Manual
-    database: nessie
+    database: iceberg
     schema: bronze
     tables:
       - name: aqi_daily

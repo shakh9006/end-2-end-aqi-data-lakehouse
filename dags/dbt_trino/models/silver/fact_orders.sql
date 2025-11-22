@@ -2,20 +2,26 @@
     config(
         materialized='incremental',
         schema='silver',
-        database='nessie',
+        database='iceberg',
         tags=['silver', 'fact_orders'],
-        unique_key='city_id || '-' || date_id'
+        unique_key='date_id'
     )
 }}
 
-with aqi as (
+with src as (
+    select 
+        *, 
+        try(date_parse(aqi_date, '%Y-%m-%d %H:%i:%s')) as ts
+    from {{ ref('aqi_daily_ods') }}
+),
+aqi as (
     select
         a.*,
         c.city_id,
         d.date_id
-    from {{ ref('aqi_daily_ods')}} as a
+    from src as a
     left join {{ ref('dim_cities')}} as c on a.slug = c.city_slug
-    left join {{ ref('dim_dates')}} as d on a.aqi_date = d.date_value
+    left join {{ ref('dim_dates')}} as d on cast(a.ts as date) = d.date_value
 )
 select 
     row_number() over(order by city_id, aqi_date) as aqi_id,

@@ -2,7 +2,7 @@
     config(
         materialized='table',
         schema='silver',
-        database='nessie',
+        database='iceberg',
         tags=['silver', 'dim_cities'],
     )
 }}

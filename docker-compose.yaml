@@ -31,7 +31,6 @@ x-airflow-common: &airflow-common
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ${AIRFLOW_PROJ_DIR:-.}/dags/spark-jobs:/opt/airflow/dags/spark-jobs
     - ${AIRFLOW_PROJ_DIR:-.}/dags/data:/opt/airflow/dags/data
-    - ${AIRFLOW_PROJ_DIR:-.}/dags/utils:/opt/airflow/dags/utils
   user: '${AIRFLOW_UID:-50000}:0'
   depends_on: &airflow-common-depends-on
     redis:
@@ -42,6 +41,17 @@ x-airflow-common: &airflow-common
     - data-lake-network
 
 services:
+  metabase:
+    image: metabase/metabase:latest
+    ports:
+      - '3000:3000'
+    depends_on:
+      - trino-coordinator
+    volumes:
+      - metabase_data:/opt/airflow/metabase-data
+    networks:
+      - data-lake-network
+
   nessie:
     image: projectnessie/nessie:latest
     networks:
@@ -52,6 +62,8 @@ services:
   minio:
     image: minio/minio:RELEASE.2025-02-18T16-25-55Z
     container_name: minio
+    volumes:
+      - minio-data:/data
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 30s
@@ -423,6 +435,8 @@ services:
 
 volumes:
   postgres-db-volume:
+  metabase_data:
+  minio-data:
 
 networks:
   data-lake-network:
